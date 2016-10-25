@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -23,9 +24,14 @@ namespace CNTKDemo
         {
             try
             {
+                // used to measure statistics
+                var stopWatch = new Stopwatch();
+                TimeSpan initTime, preditionTime;
+
                 // This example requires a pre-trained RestNet model.
                 // The model can be downloaded from <see cref="https://www.cntk.ai/resnet/ResNet_152.model"/>
-				// Or see the documentation page included other models <see cref="https://github.com/Microsoft/CNTK/tree/master/Examples/Image/Classification/ResNet"/>
+                // Or see the documentation page included other models 
+                // <see cref="https://github.com/Microsoft/CNTK/tree/master/Examples/Image/Classification/ResNet"/>
                 string workingDirectory = Environment.CurrentDirectory;
 
                 List<float> outputs;
@@ -37,6 +43,7 @@ namespace CNTKDemo
                     ThrowIfFileNotExist(modelFilePath,
                         $"Error: The model '{modelFilePath}' does not exist. Please download the ResNet model.");
 
+                    stopWatch.Start();
                     // create network with the pre-trained model
                     model.CreateNetwork($"modelPath=\"{modelFilePath}\"", deviceId: -1);
 
@@ -45,8 +52,13 @@ namespace CNTKDemo
                     if (inDims.First().Value != 224 * 224 * 3)
                     {
                         throw new CNTKRuntimeException(
-                            $"The input dimension for {inDims.First()} is {inDims.First().Value} which is not the expected size of {224*224*3}.", string.Empty);
+                            $"The input dimension for {inDims.First()} is {inDims.First().Value} which is not the expected size of {224*224*3}.",
+                            string.Empty);
                     }
+
+                    stopWatch.Stop();
+                    initTime = stopWatch.Elapsed;
+                    stopWatch.Reset();
 
                     // initialize image either from command line or as hard-coded file
                     var imageFilePath = Path.Combine(workingDirectory, "images", image ?? "dog1-white_background.jpg");
@@ -61,15 +73,21 @@ namespace CNTKDemo
                         { inDims.First().Key, resizedCHW }
                     };
 
+                    stopWatch.Start();
                     // call the evaluate method and get back the results (single layer output)...
                     var outDims = model.GetNodeDimensions(NodeGroup.Output);
                     outputs = model.Evaluate(inputs, outDims.First().Key);
+                    stopWatch.Stop();
+                    preditionTime = stopWatch.Elapsed;
                 }
-                
+
                 // retrieve top 10 predictions
                 var predictions = (from prediction in outputs.Select((value, index) => new { Value = value, Index = index })
                             orderby prediction.Value descending
                             select prediction).Take(10);
+
+                // print report
+                Console.WriteLine("\n\nInitialization time elapsed: {0}\nPrediciton time elapse: {1}\n", initTime, preditionTime);
 
                 // handle output via lookup table matching
                 var lookupTablePath = Path.Combine(workingDirectory, "imagenet_words.txt");
@@ -77,7 +95,8 @@ namespace CNTKDemo
                 var i = 0;
                 foreach (var v in predictions)
                 {
-                    Console.WriteLine("Prediction {0} (Type: {1} | Ranked: {2}, File-Index: {3})", i++, lookupTable[v.Index].Substring(9), v.Value, v.Index);
+                    Console.WriteLine("Prediction {0} (Type: {1} | Ranked: {2}, File-Index: {3})", 
+                        i++, lookupTable[v.Index].Substring(9), v.Value, v.Index);
                 }
             }
             catch (CNTKException ex)
@@ -114,7 +133,8 @@ namespace CNTKDemo
         private static void OnCNTKException(CNTKException ex)
         {
             // The pattern "Inner Exception" is used by End2EndTests to catch test failure.
-            Console.WriteLine("Error: {0}\nNative CallStack: {1}\n Inner Exception: {2}", ex.Message, ex.NativeCallStack, ex.InnerException?.Message ?? "No Inner Exception");
+            Console.WriteLine("Error: {0}\nNative CallStack: {1}\n Inner Exception: {2}", 
+                ex.Message, ex.NativeCallStack, ex.InnerException?.Message ?? "No Inner Exception");
             throw ex;
         }
 
@@ -125,7 +145,8 @@ namespace CNTKDemo
         private static void OnGeneralException(Exception ex)
         {
             // The pattern "Inner Exception" is used by End2EndTests to catch test failure.
-            Console.WriteLine("Error: {0}\nCallStack: {1}\n Inner Exception: {2}", ex.Message, ex.StackTrace, ex.InnerException?.Message ?? "No Inner Exception");
+            Console.WriteLine("Error: {0}\nCallStack: {1}\n Inner Exception: {2}", 
+                ex.Message, ex.StackTrace, ex.InnerException?.Message ?? "No Inner Exception");
             throw ex;
         }
 
