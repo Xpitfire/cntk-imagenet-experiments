@@ -24,10 +24,10 @@ namespace CNTKDemo
             try
             {
                 // This example requires the RestNet_18 model.
-                // The model can be downloaded from <see cref="https://www.cntk.ai/resnet/ResNet_18.model"/>
+                // The model can be downloaded from <see cref="https://www.cntk.ai/resnet/ResNet_152.model"/>
+				// Or see the documentation page <see cref="https://github.com/Microsoft/CNTK/tree/master/Examples/Image/Classification/ResNet"/>
                 // The model is assumed to be located at: <CNTK>\Examples\Image\Classification\ResNet 
                 // along with a sample image file named "zebra.jpg".
-                //string workingDirectory = Path.Combine(Environment.CurrentDirectory, @"..\..\Examples\Image\Classification\ResNet");
                 string workingDirectory = Environment.CurrentDirectory;
 
                 List<float> outputs;
@@ -36,7 +36,7 @@ namespace CNTKDemo
                 {
                     string modelFilePath = Path.Combine(workingDirectory, "ResNet_152.model");
                     ThrowIfFileNotExist(modelFilePath,
-                        string.Format("Error: The model '{0}' does not exist. Please download the model from https://www.cntk.ai/resnet/ResNet_18.model and save it under ..\\..\\Examples\\Image\\Classification\\ResNet.", modelFilePath));
+                        string.Format("Error: The model '{0}' does not exist. Please download the ResNet model.", modelFilePath));
 
                     model.CreateNetwork(string.Format("modelPath=\"{0}\"", modelFilePath), deviceId: -1);
 
@@ -71,7 +71,7 @@ namespace CNTKDemo
                             orderby prediction.Value descending
                             select prediction).Take(10);
 
-                // Lookup table link: https://github.com/sh1r0/caffe-android-demo/blob/master/app/src/main/assets/synset_words.txt#L1
+                // Lookup table link: <see cref="https://github.com/sh1r0/caffe-android-demo/blob/master/app/src/main/assets/synset_words.txt#L1"/>
                 foreach (var v in predictions)
                 {
                     Console.WriteLine("Prediction: Index: {0} Value: {1}", v.Index, v.Value);
