@@ -1,3 +1,4 @@
 CNTKDemo/bin/
 CNTKDemo/obj/
 CNTKDemo/packages/
+*.model
