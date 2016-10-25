@@ -77,45 +77,48 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
-    <None Include="ResNet_152.model">
+    <None Include="models\ResNet_152.model">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="ResNet_18.model">
+    <None Include="models\ResNet_18.model">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="dog1-white_background.jpg">
+    <Content Include="images\dog1-white_background.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="dog2-dog1_with_background.jpg">
+    <Content Include="images\dog2-dog1_with_background.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="dog3-dog2_mirrored.jpg">
+    <Content Include="images\dog3-dog2_mirrored.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="dog4-different_dog_same_stand_as_dog3.jpg">
+    <Content Include="images\dog4-different_dog_same_stand_as_dog3.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="dog5-closeup_face.jpg">
+    <Content Include="images\dog5-closeup_face.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="dog6-young_puppy.jpg">
+    <Content Include="images\dog6-young_puppy.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="dog7-distortion_hit_by_ball.jpg">
+    <Content Include="images\dog7-distortion_hit_by_ball.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="dog8-two_dogs.jpg">
+    <Content Include="images\dog8-two_dogs.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="dog8-with_human.jpg">
+    <Content Include="images\dog8-with_human.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="tractor.jpg">
+    <Content Include="imagenet_words.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="zebra.jpg">
+    <Content Include="images\tractor.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="images\zebra.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

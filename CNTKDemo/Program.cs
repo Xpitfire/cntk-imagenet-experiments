@@ -12,69 +12,72 @@ namespace CNTKDemo
     {
         static void Main(string[] args)
         {
-            EvaluateImageClassificationModel();
+            EvaluateImageClassificationModel(args.Length == 1 ? args[0] : null);
             Console.ReadLine();
         }
 
         /// <summary>
         /// This method shows how to evaluate a trained image classification model
         /// </summary>
-        public static void EvaluateImageClassificationModel()
+        public static void EvaluateImageClassificationModel(string image = null)
         {
             try
             {
-                // This example requires the RestNet_18 model.
+                // This example requires a pre-trained RestNet model.
                 // The model can be downloaded from <see cref="https://www.cntk.ai/resnet/ResNet_152.model"/>
-				// Or see the documentation page <see cref="https://github.com/Microsoft/CNTK/tree/master/Examples/Image/Classification/ResNet"/>
-                // The model is assumed to be located at: <CNTK>\Examples\Image\Classification\ResNet 
-                // along with a sample image file named "zebra.jpg".
+				// Or see the documentation page included other models <see cref="https://github.com/Microsoft/CNTK/tree/master/Examples/Image/Classification/ResNet"/>
                 string workingDirectory = Environment.CurrentDirectory;
 
                 List<float> outputs;
-
                 using (var model = new IEvaluateModelManagedF())
                 {
-                    string modelFilePath = Path.Combine(workingDirectory, "ResNet_152.model");
+                    // initialize model path
+                    var modelFilePath = Path.Combine(workingDirectory, "models" , "ResNet_152.model");
+                    // check if model is available
                     ThrowIfFileNotExist(modelFilePath,
-                        string.Format("Error: The model '{0}' does not exist. Please download the ResNet model.", modelFilePath));
+                        $"Error: The model '{modelFilePath}' does not exist. Please download the ResNet model.");
 
-                    model.CreateNetwork(string.Format("modelPath=\"{0}\"", modelFilePath), deviceId: -1);
+                    // create network with the pre-trained model
+                    model.CreateNetwork($"modelPath=\"{modelFilePath}\"", deviceId: -1);
 
                     // Prepare input value in the appropriate structure and size
                     var inDims = model.GetNodeDimensions(NodeGroup.Input);
                     if (inDims.First().Value != 224 * 224 * 3)
                     {
-                        throw new CNTKRuntimeException(string.Format("The input dimension for {0} is {1} which is not the expected size of {2}.", inDims.First(), inDims.First().Value, 224 * 224 * 3), string.Empty);
+                        throw new CNTKRuntimeException(
+                            $"The input dimension for {inDims.First()} is {inDims.First().Value} which is not the expected size of {224*224*3}.", string.Empty);
                     }
 
-                    // Transform the image
-                    string imageFileName = Path.Combine(workingDirectory, "dog1-white_background.jpg");
-                    ThrowIfFileNotExist(imageFileName, string.Format("Error: The test image file '{0}' does not exist.", imageFileName));
+                    // initialize image either from command line or as hard-coded file
+                    var imageFilePath = Path.Combine(workingDirectory, "images", image ?? "dog1-white_background.jpg");
+                    ThrowIfFileNotExist(imageFilePath, $"Error: The test image file '{imageFilePath}' does not exist.");
 
-                    Bitmap bmp = new Bitmap(Bitmap.FromFile(imageFileName));
-
+                    // transform the image
+                    var bmp = new Bitmap(Image.FromFile(imageFilePath));
                     var resized = bmp.Resize(224, 224, true);
                     var resizedCHW = resized.ParallelExtractCHW();
-                    var inputs = new Dictionary<string, List<float>>() { { inDims.First().Key, resizedCHW } };
+                    var inputs = new Dictionary<string, List<float>>
+                    {
+                        { inDims.First().Key, resizedCHW }
+                    };
 
-                    // We can call the evaluate method and get back the results (single layer output)...
+                    // call the evaluate method and get back the results (single layer output)...
                     var outDims = model.GetNodeDimensions(NodeGroup.Output);
                     outputs = model.Evaluate(inputs, outDims.First().Key);
                 }
-
-                // Retrieve the outcome index (so we can compare it with the expected index)
-                var max = outputs.Select((value, index) => new { Value = value, Index = index })
-                    .Aggregate((a, b) => (a.Value > b.Value) ? a : b)
-                    .Index;
                 
+                // retrieve top 10 predictions
                 var predictions = (from prediction in outputs.Select((value, index) => new { Value = value, Index = index })
                             orderby prediction.Value descending
                             select prediction).Take(10);
 
-                // Lookup table link: <see cref="https://github.com/sh1r0/caffe-android-demo/blob/master/app/src/main/assets/synset_words.txt#L1"/>
+                // handle output via lookup table matching
+                var lookupTablePath = Path.Combine(workingDirectory, "imagenet_words.txt");
+                var lookupTable = File.ReadLines(lookupTablePath).ToList();
+                var i = 0;
                 foreach (var v in predictions)
                 {
-                    Console.WriteLine("Prediction: Index: {0} Value: {1}", v.Index, v.Value);
+                    Console.WriteLine("Prediction {0} (Type: {1} | Ranked: {2}, File-Index: {3})", i++, lookupTable[v.Index].Substring(9), v.Value, v.Index);
                 }
             }
             catch (CNTKException ex)
@@ -100,7 +103,7 @@ namespace CNTKDemo
                 {
                     Console.WriteLine(errorMsg);
                 }
-                throw new FileNotFoundException(string.Format("File '{0}' not found.", filePath));
+                throw new FileNotFoundException($"File '{filePath}' not found.");
             }
         }
 
@@ -111,7 +114,7 @@ namespace CNTKDemo
         private static void OnCNTKException(CNTKException ex)
         {
             // The pattern "Inner Exception" is used by End2EndTests to catch test failure.
-            Console.WriteLine("Error: {0}\nNative CallStack: {1}\n Inner Exception: {2}", ex.Message, ex.NativeCallStack, ex.InnerException != null ? ex.InnerException.Message : "No Inner Exception");
+            Console.WriteLine("Error: {0}\nNative CallStack: {1}\n Inner Exception: {2}", ex.Message, ex.NativeCallStack, ex.InnerException?.Message ?? "No Inner Exception");
             throw ex;
         }
 
@@ -122,7 +125,7 @@ namespace CNTKDemo
         private static void OnGeneralException(Exception ex)
         {
             // The pattern "Inner Exception" is used by End2EndTests to catch test failure.
-            Console.WriteLine("Error: {0}\nCallStack: {1}\n Inner Exception: {2}", ex.Message, ex.StackTrace, ex.InnerException != null ? ex.InnerException.Message : "No Inner Exception");
+            Console.WriteLine("Error: {0}\nCallStack: {1}\n Inner Exception: {2}", ex.Message, ex.StackTrace, ex.InnerException?.Message ?? "No Inner Exception");
             throw ex;
         }
 
