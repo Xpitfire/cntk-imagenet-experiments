@@ -24,6 +24,8 @@ namespace CNTKDemo
             if (args.Length < 1)
             {
                 Console.WriteLine(Error);
+                VisualizeSourceCode();
+                Console.ReadLine();
                 return 1;
             }
 
@@ -205,6 +207,7 @@ namespace CNTKDemo
         public static void TransformToImage(ImageContainer imgData)
         {
             var dim = (int)Math.Sqrt(imgData.RawData.Length);
+            var upscale = 65025;
             if ((float)imgData.RawData.Length/dim > 0) ++dim; 
             int min = imgData.RawData.Min();
             int max = imgData.RawData.Max() - min;
@@ -214,12 +217,24 @@ namespace CNTKDemo
             {
                 for (int x = 0; x < dim; x++)
                 {
-                    int d = imgData.RawData[x + y] - min;
-                    byte b1 = (byte)d;
+                    int i = y*x + x;
+                    if (i >= imgData.RawData.Length) continue;
+                    
+                    int d = (imgData.RawData[i] - min) * (upscale/max);
+                    byte b1 = (byte)(d & 0xFF);
                     byte b2 = (byte)(d >> 8);
                     float r = b1;
+
                     float g = b2;
-                    float b = Sigmoid(d / (float)max) * 255;
+                    //float g = Sigmoid(d*d) * 255;
+                    //var v = Math.Tanh(d);
+                    //var vt = Math.Abs(v);
+                    //float b = (float) (v < 0 ? vt*127 : vt*128 + 127);
+                    //float b = (float) (Math.Abs(Math.Sin(d))*255); //Sigmoid(d / (float)max) * 255;
+                    //float b = (float)(Math.Abs(Math.Sin(d)) * 255);
+
+                    float b = (float)(Math.Abs(Math.Sin(b1 * b2))*255);
+                    //Console.WriteLine("d: {0}, r: {1}, g: {2}, b: {3}", d, r, g, b);
                     bt.SetPixel(x, y, Color.FromArgb((int)r, (int)g, (int)b));
                 }
             }
