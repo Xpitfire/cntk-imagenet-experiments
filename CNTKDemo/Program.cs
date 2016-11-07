@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.MSR.CNTK.Extensibility.Managed;
@@ -24,16 +25,16 @@ namespace CNTKDemo
             if (args.Length < 1)
             {
                 Console.WriteLine(Error);
-                VisualizeSourceCode();
-                Console.ReadLine();
                 return 1;
             }
 
             switch (args[0])
             {
+                // classify images
                 case CmdClassify:
                     EvaluateImageClassificationModel(args.Length == 2 ? args[1] : null);
                     break;
+                // transform source to images
                 case CmdTransform:
                     VisualizeSourceCode();
                     break;
@@ -151,6 +152,9 @@ namespace CNTKDemo
             }
         }
 
+        /// <summary>
+        /// Transform source files to bitmap.
+        /// </summary>
         private static void VisualizeSourceCode()
         {
 
@@ -171,81 +175,56 @@ namespace CNTKDemo
                 PersistImage(imgData);
             }
         }
-
-        //public static Bitmap ToImage(byte[] data, string name)
-        //{
-        //    var bt = new Bitmap(data.Length, data.Length);
-        //    for (int y = 0; y < bt.Height; y++)
-        //    {
-        //        for (int x = 0; x < bt.Width; x++)
-        //        {
-        //            var c = (data[(x + y) % data.Length] * data[(data.Length - x + y) % data.Length]) % 255;
-        //            bt.SetPixel(y, x, Color.FromArgb(c, c, c));
-        //        }
-        //    }
-        //    bt.Save(name);
-        //    return bt;
-        //}
-
-        //public static Bitmap ToImage(int[] data, string name)
-        //{
-        //    var bt = new Bitmap(data.Length, data.Length);
-        //    for (int y = 0; y < bt.Height; y++)
-        //    {
-        //        for (int x = 0; x < bt.Width; x++)
-        //        {
-        //            var r = data[(x + y) % data.Length] * data[(data.Length - x + y) % data.Length] % 256;
-        //            var g = data[(x + y) % data.Length] * data[(x + y) % data.Length] % 256;
-        //            var b = (int)Math.Abs(Math.Sin(r) * 256);
-        //            bt.SetPixel(y, x, Color.FromArgb(r, g, b));
-        //        }
-        //    }
-        //    bt.Save(name);
-        //    return bt;
-        //}
-
+        
+        /// <summary>
+        /// Calculate transformation of the raw data representation of a ImageContainer from source
+        /// code tokens to a bitmap representation.
+        /// </summary>
+        /// <param name="imgData"></param>
         public static void TransformToImage(ImageContainer imgData)
         {
-            var dim = (int)Math.Sqrt(imgData.RawData.Length);
-            var upscale = 65025;
-            if ((float)imgData.RawData.Length/dim > 0) ++dim; 
-            int min = imgData.RawData.Min();
-            int max = imgData.RawData.Max() - min;
+            // Codes: http://source.roslyn.io/#Microsoft.CodeAnalysis.CSharp/Syntax/SyntaxKind.cs,7c4040782a1b2ce0
+            const int normalizationMinValue = 8000; // Roslyn token min value
+            const int normalizationMaxValue = 9052; // Roslyn token max value
 
+            const int upscale = 65025; // upscal resolution
+
+            // calculate image dimension
+            var dim = (int)Math.Sqrt(imgData.RawData.Length);
+            // check if odd or even number and add extra dimension if odd
+            if ((float)imgData.RawData.Length/dim > 0) ++dim;
+            // compute bounds
+            int min = normalizationMinValue;
+            int max = normalizationMaxValue - min;
+
+            // initialize empty image
             var bt = new Bitmap(dim, dim);
-            for (int y = 0; y < dim; y++)
+            for (int y = 0; y < dim; y++) // y-axis
             {
-                for (int x = 0; x < dim; x++)
+                for (int x = 0; x < dim; x++) // x-axis
                 {
-                    int i = y*x + x;
+                    int i = y*x + x; // compute vector index
+                    // skip over-dimension position if max vector-index reached
                     if (i >= imgData.RawData.Length) continue;
                     
+                    // re-scale from token range values to RGB specturm
                     int d = (imgData.RawData[i] - min) * (upscale/max);
-                    byte b1 = (byte)(d & 0xFF);
-                    byte b2 = (byte)(d >> 8);
-                    float r = b1;
-
-                    float g = b2;
-                    //float g = Sigmoid(d*d) * 255;
-                    //var v = Math.Tanh(d);
-                    //var vt = Math.Abs(v);
-                    //float b = (float) (v < 0 ? vt*127 : vt*128 + 127);
-                    //float b = (float) (Math.Abs(Math.Sin(d))*255); //Sigmoid(d / (float)max) * 255;
-                    //float b = (float)(Math.Abs(Math.Sin(d)) * 255);
-
-                    float b = (float)(Math.Abs(Math.Sin(b1 * b2))*255);
-                    //Console.WriteLine("d: {0}, r: {1}, g: {2}, b: {3}", d, r, g, b);
+                    // compute colors
+                    float r = (byte)(d >> 8); // use higher bits
+                    float g = (byte)(d & 0xFF); // use lower 8 bits
+                    float b = (float)(Math.Abs(Math.Sin(r * g))*255);
+                    // set new features
                     bt.SetPixel(x, y, Color.FromArgb((int)r, (int)g, (int)b));
                 }
             }
             imgData.Image = bt;
         }
-
-        public static float Sigmoid(float x)
-        {
-            return 2 / (float)(1 + Math.Exp(-2 * x)) - 1;
-        }
-
+        
+        /// <summary>
+        /// Translate from source file to Roslyn tokens int-values.
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <returns></returns>
         public static int[] Tokenize(string fileName)
         {
             var rawData = File.ReadAllText(fileName);
@@ -255,6 +234,10 @@ namespace CNTKDemo
             return tokens.ToList().Select(x => x.RawKind).ToArray();
         }
 
+        /// <summary>
+        /// Save image container bitmap.
+        /// </summary>
+        /// <param name="imgData"></param>
         private static void PersistImage(ImageContainer imgData)
         {
             var subDir = "Visualizations";
@@ -262,11 +245,18 @@ namespace CNTKDemo
             imgData.Image.Save(Path.Combine(Environment.CurrentDirectory, subDir, imgData.Name));
         }
 
+        /// <summary>
+        /// Rescale image to normalized size.
+        /// </summary>
+        /// <param name="imgData"></param>
         private static void RescaleImage(ImageContainer imgData)
         {
             imgData.Image = imgData.Image.Resize(224, 224, true);
         }
 
+        /// <summary>
+        /// Data container class.
+        /// </summary>
         public class ImageContainer
         {
             public string Name { get; set; }
